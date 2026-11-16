@@ -1,6 +1,6 @@
 # 骑行路线导出 GPX
 
-一个用于导出骑行路书的 Codex Skill，支持 **iGPSPORT（迹驰）路书导出**、**高德骑行分享路线转 GPX**，以及**按地点顺序规划高德骑行路线**。也可以直接通过命令行使用。
+一个用于导出骑行路书的通用 Agent Skill，采用 `SKILL.md` 与配套脚本的目录结构，不依赖 Codex 专有接口，支持 **iGPSPORT（迹驰）路书导出**、**高德骑行分享路线转 GPX**，以及**按地点顺序规划高德骑行路线**。也可以直接通过命令行使用。
 
 生成的 GPX 文件可导入支持该格式的码表或骑行软件。导出结果包含文件路径、路线名称、里程和轨迹点数。
 
@@ -14,22 +14,38 @@
 
 > **高德路线确实使用高德官方的自行车骑行规划。** 脚本调用 `/v5/direction/bicycling`，使用接口返回的道路轨迹，每段采用返回的第一个方案。分享路线保留点位及经过顺序，但重新规划结果可能与高德 App 中原先选择的方案不同。
 
+## Agent 兼容性
+
+本项目的目录结构符合 [Agent Skills 开放规范](https://agentskills.io/specification)的基本要求：`SKILL.md` 包含 `name`、`description` 和操作说明，`scripts/` 提供可独立运行的 Python 脚本。代码不依赖特定模型、Agent SDK 或 Codex 专有工具。
+
+| Agent 能力 | 使用方式 |
+| --- | --- |
+| 支持 Agent Skills，且允许执行脚本 | 按该产品的方式导入整个 Skill 目录，由 Agent 读取指令并运行脚本 |
+| 不支持原生 Skill，但能读取文件、执行命令 | 让 Agent 阅读 `SKILL.md`，并按说明调用 `scripts/route_gpx.py`；可能需要配置工具入口 |
+| 只能聊天，无法执行脚本或访问网络 | 无法直接完成导出，需要接入具备这些能力的执行环境 |
+
+**不局限于 Codex，但不保证所有 Agent 产品都能零配置运行。** 实际导出需要 Python 3.10+、curl、网络访问、输出文件写入权限，以及目标产品授予的相应工具权限；高德功能还需要 Web 服务 Key。
+
+`--prompt-key` 需要交互式终端。没有交互式终端的 Agent 应通过其运行环境或密钥配置功能提供 `AMAP_WEBSERVICE_KEY`。macOS 钥匙串只是可选的本机配置方式，云端 Agent 无法自动读取本机钥匙串。
+
+目前仅在本仓库的 Codex 使用流程中完成过 iGPSPORT 实际导出验证；其他 Agent 产品及高德导出流程尚未逐一实测。跨产品兼容性判断基于文件格式和运行依赖检查。
+
 ## 安装
 
 运行环境：**Python 3.10+**、**curl**，以及可访问对应服务的网络。脚本仅使用 Python 标准库，无需额外安装 Python 包。
 
-将仓库放到个人 Skill 目录：
+不同 Agent 产品的 Skill 导入方式和目录可能不同，请以目标产品的说明为准。下面以 `~/.agents/skills/` 为安装目录示例；仅当目标产品支持该目录或已配置读取该目录时使用：
 
 ```bash
 mkdir -p ~/.agents/skills
 git clone https://github.com/PIXELLL7-UX/cycling-route-gpx.git ~/.agents/skills/cycling-route-gpx
 ```
 
-如果目标目录已存在，请先检查已有版本。也可以下载仓库 ZIP，解压后将包含 `SKILL.md` 和 `scripts/` 的文件夹命名为 `cycling-route-gpx`，放入 `~/.agents/skills/`。
+如果目标目录已存在，请先检查已有版本。也可以下载仓库 ZIP，解压后将包含 `SKILL.md` 和 `scripts/` 的文件夹命名为 `cycling-route-gpx`，放入目标 Agent 产品支持的 Skill 目录。
 
 ## 在对话中使用
 
-安装后，可以向 Codex 提出这样的请求：
+在支持 Skill 加载与脚本执行的 Agent 中安装后，可以提出这样的请求：
 
 - “使用 cycling-route-gpx，导出 iGPSPORT 路书 3074600 的 GPX。”
 - “把这个高德自行车路线分享链接转成 GPX：〈粘贴链接〉。”
@@ -39,7 +55,7 @@ git clone https://github.com/PIXELLL7-UX/cycling-route-gpx.git ~/.agents/skills/
 
 ## 命令行使用
 
-先进入 Skill 目录：
+先进入实际安装的 Skill 目录，以下仍以 `~/.agents/skills/` 为例：
 
 ```bash
 cd ~/.agents/skills/cycling-route-gpx
@@ -100,7 +116,7 @@ python3 scripts/route_gpx.py amap-plan --city 上海市 \
 
 ## 文件说明
 
-- [SKILL.md](SKILL.md)：供 Codex 使用的 Skill 指令。
+- [SKILL.md](SKILL.md)：供兼容 Agent 读取的 Skill 指令。
 - [scripts/route_gpx.py](scripts/route_gpx.py)：下载、规划和 GPX 导出入口。
 - [scripts/coordinates.py](scripts/coordinates.py)：GCJ-02 与 WGS84 坐标转换。
 - [scripts/coordinates-LICENSE.txt](scripts/coordinates-LICENSE.txt)：坐标转换代码的第三方许可证。
